@@ -15,12 +15,6 @@
  */
 package org.mybatis.spring.annotation;
 
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.mybatis.spring.mapper.ClassPathMapperScanner;
 import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
@@ -36,6 +30,23 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
+
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+
+/**
+ * MapperScannerRegistrar类核心实现了ImportBeanDefinitionRegistrar接口
+ * 主要方法registerBeanDefinitions, 这个方法里面往Spring容器中注入一个beanDefinition, 叫做MapperScannerConfigurer
+ * 这个beanDefinition比较特殊, 它实现了BeanDefinitionRegistryPostProcessor这个接口
+ * 这个接口里面的方法postProcessBeanDefinitionRegistry会在Spring后面进行回调,
+ * 这个方法也是往Spring容器里面注册beanDefinition, 此时mybatis使用了自己的扫描器, 扫描出所有的接口beanDefinition
+ * 并且改造里面的属性
+ *
+ */
 
 /**
  * A {@link ImportBeanDefinitionRegistrar} to allow annotation configuration of MyBatis mapper scanning. Using
@@ -62,15 +73,16 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
   public void setResourceLoader(ResourceLoader resourceLoader) {
     // NOP
   }
-
   /**
    * {@inheritDoc}
    */
   @Override
   public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+    // 获取注解@MapperScan上的属性
     AnnotationAttributes mapperScanAttrs = AnnotationAttributes
         .fromMap(importingClassMetadata.getAnnotationAttributes(MapperScan.class.getName()));
     if (mapperScanAttrs != null) {
+      // 实现注册bean
       registerBeanDefinitions(importingClassMetadata, mapperScanAttrs, registry,
           generateBaseBeanName(importingClassMetadata, 0));
     }
@@ -79,6 +91,8 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
   void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs,
       BeanDefinitionRegistry registry, String beanName) {
 
+    // 最终目的就是注入这个MapperScannerConfigurer, 这个类实现了接口BeanDefinitionRegistryPostProcessor
+    // 里面会用扫描器, 扫描所有接口生成BeanDefinition放到容器中, 取出来重置一些属性
     BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(MapperScannerConfigurer.class);
     builder.addPropertyValue("processPropertyPlaceHolders", true);
 
